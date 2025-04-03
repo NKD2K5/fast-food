@@ -1,6 +1,7 @@
 ﻿using Fast_Food.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http; 
+using Microsoft.AspNetCore.Http;
+using Fast_Food.Momo;
 
 namespace Fast_Food
 {
@@ -9,6 +10,9 @@ namespace Fast_Food
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.Configure<MomoOptionModel>(builder.Configuration.GetSection("MomoOptions"));
+            builder.Services.AddHttpClient<IMomoService, MomoService>();
+
 
             // Đăng ký DbContext với chuỗi kết nối
             builder.Services.AddDbContext<DoAnStoreContext>(options =>

@@ -1,0 +1,33 @@
+﻿@{
+    ViewBag.Title = "Chatbot";
+}
+
+<h2>Chat với Chatbot</h2>
+
+<div>
+    <input type="text" id="userMessage" placeholder="Nhập câu hỏi..." />
+    <button id="sendButton">Gửi</button>
+</div>
+
+<div id="chatBox">
+    <!-- Các tin nhắn sẽ hiển thị tại đây -->
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#sendButton').click(function () {
+            var userMessage = $('#userMessage').val();
+            if (userMessage.trim() !== "") {
+                // Hiển thị tin nhắn của người dùng
+                $('#chatBox').append('<p><strong>Bạn: </strong>' + userMessage + '</p>');
+
+                // Gửi yêu cầu tới Controller để lấy phản hồi
+                $.post('/Chatbot/GetResponse', { userMessage: userMessage }, function (data) {
+                    $('#chatBox').append('<p><strong>Chatbot: </strong>' + data.response + '</p>');
+                    $('#userMessage').val(''); // Xóa nội dung sau khi gửi
+                });
+            }
+        });
+    });
+</script>

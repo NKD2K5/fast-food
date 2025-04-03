@@ -1,0 +1,169 @@
+﻿@{
+    ViewData["Title"] = "Thống kê doanh thu & đơn hàng";
+}
+
+<!-- Thêm Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container mt-4">
+    <h2 class="text-center mb-4">📊 Thống kê Doanh Thu & Đơn Hàng</h2>
+
+    <div class="row justify-content-center">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-primary">
+                <div class="card-body text-center">
+                    <label class="fw-bold">📌 Chọn loại thống kê</label>
+                    <select id="chartType" class="form-select mt-2">
+                        <option value="day">Theo ngày</option>
+                        <option value="month">Theo tháng</option>
+                        <option value="year">Theo năm</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-2" id="monthFilter">
+            <div class="card shadow-sm border-success">
+                <div class="card-body text-center">
+                    <label class="fw-bold">📅 Tháng</label>
+                    <input type="number" id="month" class="form-control mt-2" min="1" max="12" value="@DateTime.Now.Month">
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="card shadow-sm border-warning">
+                <div class="card-body text-center">
+                    <label class="fw-bold">📆 Năm</label>
+                    <input type="number" id="year" class="form-control mt-2" min="2000" max="2100" value="@DateTime.Now.Year">
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="card shadow-sm border-info">
+                <div class="card-body text-center">
+                    <label class="fw-bold">💰 Tổng doanh thu</label>
+                    <h4 class="text-success mt-2"><span id="totalRevenue">0 VNĐ</span></h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="card shadow-sm border-danger">
+                <div class="card-body text-center">
+                    <label class="fw-bold">📦 Tổng đơn hàng</label>
+                    <h4 class="text-danger mt-2"><span id="totalOrders">0</span> đơn</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-lg p-4 mt-4">
+        <canvas id="revenueChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let chart;
+
+    function loadChart(type) {
+        let url;
+        let year = document.getElementById("year").value;
+        let month = document.getElementById("month").value;
+
+        if (type === "day") {
+            url = `/ThongKe/GetRevenueByDay?month=${month}&year=${year}`;
+        } else if (type === "month") {
+            url = `/ThongKe/GetRevenueByMonth?year=${year}`;
+        } else {
+            url = `/ThongKe/GetRevenueByYear`;
+        }
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                let labels = [];
+                let revenueValues = [];
+                let orderValues = [];
+                let totalRevenue = 0;
+                let totalOrders = 0;
+
+                if (type === "day") {
+                    labels = data.map(item => `Ngày ${item.day}`);
+                } else if (type === "month") {
+                    labels = data.map(item => `Tháng ${item.month}`);
+                } else {
+                    labels = data.map(item => `Năm ${item.year}`);
+                }
+
+                revenueValues = data.map(item => item.total);
+                orderValues = data.map(item => item.orders);
+
+                totalRevenue = revenueValues.reduce((sum, value) => sum + value, 0);
+                totalOrders = orderValues.reduce((sum, value) => sum + value, 0);
+
+                document.getElementById("totalRevenue").textContent = new Intl.NumberFormat('vi-VN').format(totalRevenue) + " VNĐ";
+                document.getElementById("totalOrders").textContent = totalOrders;
+
+                if (chart) chart.destroy();
+
+                const ctx = document.getElementById('revenueChart').getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Doanh thu (VNĐ)',
+                                data: revenueValues,
+                                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Số đơn hàng',
+                                data: orderValues,
+                                backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return new Intl.NumberFormat('vi-VN').format(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+    }
+
+    document.getElementById("chartType").addEventListener("change", function () {
+        let type = this.value;
+        document.getElementById("monthFilter").style.display = (type === "year") ? "none" : "block";
+        loadChart(type);
+    });
+
+    document.getElementById("month").addEventListener("change", () => loadChart("day"));
+    document.getElementById("year").addEventListener("change", () => loadChart(document.getElementById("chartType").value));
+
+    window.onload = function () {
+        loadChart("day");
+    };
+</script>

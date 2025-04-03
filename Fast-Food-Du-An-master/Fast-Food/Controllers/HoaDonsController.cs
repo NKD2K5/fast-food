@@ -336,20 +336,6 @@ namespace Fast_Food.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
-        public IActionResult ThongKe()
-        {
-            var thongKe = _context.HoaDons
-                .GroupBy(hd => hd.TrangThaiDonHang)
-                .Select(g => new ThongKeViewModel
-                {
-                    TrangThai = g.Key,
-                    SoDonHang = g.Count(),
-                    TongTien = g.Sum(hd => hd.TongTien) ?? 0 // Tránh lỗi null
-                })
-                .ToList();
-
-            return View(thongKe); // Trả về danh sách ThongKeViewModel
-        }
         public async Task<IActionResult> XacNhanDon()
         {
             var hoaDons = await _context.HoaDons

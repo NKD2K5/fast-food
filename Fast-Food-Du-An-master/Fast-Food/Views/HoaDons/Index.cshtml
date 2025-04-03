@@ -67,9 +67,20 @@
                         </form>
                     }
 
-                    @if (item.value.TrangThaiDonHang == "Chờ xác nhận thanh toán")
+                    @if (item.value.TrangThaiThanhToan == "Chưa thanh toán")
                     {
-                      
+                        <form method="post" asp-action="CreatePaymentUrl" asp-controller="Momo">
+                            <input type="hidden" name="OrderId" value="@Guid.NewGuid().ToString()" />
+                            <input type="hidden" name="FullName" value="@item.value.MaKhachHang" />
+                            <input type="hidden" name="Amount" value="@item.value.TongTien" />
+                            <input type="hidden" name="OrderInfo" value="Thanh toán đơn hàng #@item.value.MaHoaDon qua MoMo tại Fast_Food" />
+
+                            <button class="btn btn-danger btn-sm" type="submit">💰 Thanh toán MoMo</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <button class="btn btn-secondary btn-sm" disabled>Không thể thanh toán</button>
                     }
                 </td>
             </tr>

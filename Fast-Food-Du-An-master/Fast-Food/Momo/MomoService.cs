@@ -3,17 +3,18 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
 using System.Text;
-using RestSharp;
 
 namespace Fast_Food.Momo
 {
     public class MomoService : IMomoService
     {
         private readonly IOptions<MomoOptionModel> _options;
+        private readonly HttpClient _httpClient;
 
-        public MomoService(IOptions<MomoOptionModel> options)
+        public MomoService(IOptions<MomoOptionModel> options, HttpClient httpClient)
         {
             _options = options;
+            _httpClient = httpClient;
         }
 
         public async Task<MomoCreatePaymentResponseModel> CreatePaymentAsync(OrderInfoModel model)
@@ -23,13 +24,15 @@ namespace Fast_Food.Momo
                 throw new ArgumentException("Dữ liệu không hợp lệ để tạo thanh toán.");
             }
 
+            // Tạo OrderId và OrderInfo
             model.OrderId = DateTime.UtcNow.Ticks.ToString();
             model.OrderInfo = $"Khách hàng: {model.FullName}. Nội dung: {model.OrderInfo}";
 
+            // Chuẩn bị dữ liệu raw để ký HMAC SHA256
             var rawData = $"partnerCode={_options.Value.PartnerCode}" +
                           $"&accessKey={_options.Value.AccessKey}" +
                           $"&requestId={model.OrderId}" +
-                          $"&amount={model.Amount.ToString("F0")}" + // ✅ Chuyển đổi decimal sang string
+                          $"&amount={model.Amount.ToString("F0")}" +
                           $"&orderId={model.OrderId}" +
                           $"&orderInfo={model.OrderInfo}" +
                           $"&returnUrl={_options.Value.ReturnUrl}" +
@@ -38,35 +41,40 @@ namespace Fast_Food.Momo
 
             var signature = ComputeHmacSha256(rawData, _options.Value.SecretKey);
 
-            var client = new RestClient(_options.Value.MomoApiUrl);
-            var request = new RestRequest() { Method = Method.Post };
-            request.AddHeader("Content-Type", "application/json; charset=UTF-8");
-
+            // Tạo dữ liệu JSON để gửi lên MoMo
             var requestData = new
             {
-                accessKey = _options.Value.AccessKey,
                 partnerCode = _options.Value.PartnerCode,
-                requestType = _options.Value.RequestType,
-                notifyUrl = _options.Value.NotifyUrl,
-                returnUrl = _options.Value.ReturnUrl,
-                orderId = model.OrderId,
-                amount = model.Amount.ToString("F0"), // ✅ Sửa lỗi decimal -> string
-                orderInfo = model.OrderInfo,
+                accessKey = _options.Value.AccessKey,
                 requestId = model.OrderId,
+                amount = model.Amount.ToString("F0"),
+                orderId = model.OrderId,
+                orderInfo = model.OrderInfo,
+                returnUrl = _options.Value.ReturnUrl,
+                notifyUrl = _options.Value.NotifyUrl,
+                requestType = _options.Value.RequestType,
                 extraData = "",
                 signature = signature
             };
 
-            request.AddJsonBody(requestData);
+            var requestContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
 
-            var response = await client.ExecuteAsync(request);
+            // Gửi yêu cầu đến API MoMo
+            var response = await _httpClient.PostAsync(_options.Value.MomoApiUrl, requestContent);
+            var responseString = await response.Content.ReadAsStringAsync();
 
-            if (!response.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Lỗi MoMo API: {response.StatusCode} - {response.Content}");
+                throw new Exception($"Lỗi MoMo API: {response.StatusCode} - {responseString}");
             }
 
-            return JsonConvert.DeserializeObject<MomoCreatePaymentResponseModel>(response.Content);
+            var responseModel = JsonConvert.DeserializeObject<MomoCreatePaymentResponseModel>(responseString);
+            if (responseModel == null)
+            {
+                throw new Exception("Lỗi khi giải mã phản hồi từ MoMo.");
+            }
+
+            return responseModel;
         }
 
         public async Task<MomoExecuteResponseModel> PaymentExecuteAsync(IQueryCollection collection)

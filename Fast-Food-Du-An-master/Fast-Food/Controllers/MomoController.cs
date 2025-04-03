@@ -11,13 +11,27 @@ namespace Fast_Food.Controllers
         {
             _momoService = momoService;
         }
-        [HttpPost]
-        [Route("CreatePaymentUrl")]
-        public async Task<IActionResult> CreatePaymentUrl(OrderInfoModel model)
+        //[HttpPost]
+        //[Route("CreatePaymentUrl")]
+        //public async Task<IActionResult> CreatePaymentUrl(OrderInfoModel model)
+        //{
+        //    var response = await _momoService.CreatePaymentAsync(model);
+        //    return Redirect(response.PayUrl);
+        //}
+        [Route("Momo/CreatePaymentUrl")]
+        public async Task<IActionResult> CreatePaymentUrl([FromServices] IMomoService momoService)
         {
-            var response = await _momoService.CreatePaymentAsync(model);
+            var order = new OrderInfoModel
+            {
+                FullName = "Nguyễn Văn A",
+                Amount = 100000,
+                OrderInfo = "Thanh toán đơn hàng"
+            };
+
+            var response = await momoService.CreatePaymentAsync(order);
             return Redirect(response.PayUrl);
         }
+
         [HttpGet]
         public IActionResult Pa()
         {
